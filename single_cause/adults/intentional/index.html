@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <title>Experiment</title>
+
+    <link href="https://unpkg.com/jspsych@7.2.3/css/jspsych.css" rel="stylesheet" type="text/css" />
+
+    <script src="https://unpkg.com/jspsych@7.2.3"></script>
+    <script src='js/jquery.min.js'></script>
+    <script src='js/jquery-ui.min.js'></script>
+    <script src="https://unpkg.com/@jspsych/plugin-html-button-response@1.1.1"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-html-keyboard-response@1.1.2"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-survey-text@1.1.1"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-survey-likert@1.1.1"></script>
+    <script src="https://unpkg.com/@jspsych/plugin-survey-html-form@1.0.1"></script>
+    <script src="https://proliferate.alps.science/static/js/proliferate.js"> </script>
+    <script src="https://unpkg.com/@jspsych/plugin-preload@1.1.1"></script>
+
+
+
+    <script src='js/intro.js'></script>
+    <script src='js/consent.js'></script>
+    <script src='js/trial.js'></script>
+    <script src='js/demographic_form.js'></script>
+</head>
+
+<body></body>
+<script>
+
+
+
+
+    let timeline = []
+
+
+    // Experiment configuration
+    const condition_type = "intentional";
+
+    // Generate unique participant ID using timestamp and random number
+    const participant_id = `P${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+
+    // Randomize scenario order (bike and mirror)
+    const scenario_list = Math.random() < 0.5 ? ["bike", "mirror"] : ["mirror", "bike"];
+
+    console.log("Condition:", condition_type);
+    console.log("Participant ID:", participant_id);
+    console.log("Scenario order:", scenario_list);
+
+    function buildOptionChoice(imagePath) {
+        return `<img src="${imagePath}" style="width: 220px; height: 220px; object-fit: contain; border: 1px solid #ccc; border-radius: 8px;" />`;
+    }
+
+
+    // Data collection
+
+    let jsPsych = initJsPsych({
+        show_progress_bar: true,
+        on_finish: () => {
+
+            jsPsych.data.displayData();
+            let responseData = {};
+
+            // Collect all responses
+            for (const trialPage of jsPsych.data.get().filter({ "page_type": "trial_data" }).values()) {
+                const scenario = trialPage["scenario"];
+                const question = trialPage["question"];
+                responseData[`${scenario}_${question}`] = trialPage["selected_option"];
+            }
+
+            console.log(responseData);
+
+
+            let gender = jsPsych.data.get().filter({ "page_type": "participant_survey" }).values()[0]["response"].gender
+            if (!gender && jsPsych.data.get().filter({ "page_type": "participant_survey" }).values()[0]["response"].other_gender) {
+                gender = "other_gender"
+            }
+            let age = parseInt(jsPsych.data.get().filter({ "page_type": "participant_survey" }).values()[0]["response"].age)
+            let race = jsPsych.data.get().filter({ "page_type": "participant_survey" }).values()[0]["response"].race
+            if (!race && jsPsych.data.get().filter({ "page_type": "participant_survey" }).values()[0]["response"].other_race) {
+                race = "other_race"
+            }
+            let ethnicity = jsPsych.data.get().filter({ "page_type": "participant_survey" }).values()[0]["response"].ethnicity
+            let demographics = {
+                "age": age,
+                "gender": gender,
+                "race": race,
+                "ethnicity": ethnicity
+            }
+
+            // Get question orders for each scenario
+            let question_orders = {};
+            for (const trialPage of jsPsych.data.get().filter({ "page_type": "question_order" }).values()) {
+                const scenario = trialPage["scenario"];
+                question_orders[scenario] = {
+                    "order": trialPage["order"],
+                    "character_order": trialPage["character_order"]
+                };
+            }
+
+            // combine all data
+            let data_final = {
+                "participant_id": participant_id,
+                "condition": condition_type,
+                "scenario_order": scenario_list,
+                "question_orders": question_orders,
+                "responses": responseData,
+                "participants": demographics,
+            }
+
+            console.log(data_final)
+
+            proliferate.submit(data_final);
+
+            $('#jspsych-content').html('<div style="margin: auto;"> <p> Thank you for' +
+                ' participating in this experiment! </p> <p> Redirecting you back to' +
+                ' Prolific... </p>');
+            setTimeout(function () { }, 400);
+        }
+    })
+
+
+    // Consent
+
+    timeline.push(consent)
+
+
+    // Instruction page
+    let instruction = {
+        type: jsPsychHtmlKeyboardResponse,
+        stimulus: `<img src=${trials["instructions"]} width = "80%"></img>`,
+        choices: [(' ')],
+        prompt: "<p>Press the <b>spacebar</b> to begin.</p>"
+    };
+    timeline.push(instruction);
+
+
+    // Randomize cause/simple order once, shared across both scenarios
+    const cause_simple_order = Math.random() < 0.5 ? ["cause", "simple"] : ["simple", "cause"];
+    // fault always before punish
+    const question_order = [...cause_simple_order, "fault", "punish"];
+
+    console.log("Question order (shared):", question_order);
+
+    // Character randomization
+    const character_order_condition = Math.random() < 0.5 ? 0 : 1;
+    const characters = {
+        "bike": ["andy"],
+        "mirror": ["sophia"]
+    };
+
+    // Scenarios (bike and mirror in randomized order)
+    for (const scenario of scenario_list) {
+        console.log(`Adding scenario: ${scenario}`);
+
+        let scenario_chars = characters[scenario];
+        // No character randomization as there is only one cause character
+        console.log(`Question order for ${scenario}:`, question_order);
+        console.log(`Character order for ${scenario}:`, scenario_chars);
+
+        // Record question order
+        timeline.push({
+            type: jsPsychHtmlKeyboardResponse,
+            stimulus: "",
+            trial_duration: 0,
+            data: {
+                "page_type": "question_order",
+                "scenario": scenario,
+                "order": question_order,
+                "character_order": scenario_chars
+            },
+            on_finish: function() {
+                // This trial is invisible, just for recording data
+            }
+        });
+
+        // Show story images
+        for (const story_page of trials["scenarios"][scenario]["story"]) {
+            let trial = {
+                type: jsPsychHtmlKeyboardResponse,
+                stimulus: `<img src=${story_page} width = "70%"></img>`,
+                choices: [(' ')],
+                prompt: "<p>Press the <b>spacebar</b> to continue.</p>"
+            };
+            timeline.push(trial);
+        }
+
+        // Show questions in the randomized order
+        for (const question_type of question_order) {
+            for (const character of scenario_chars) {
+                const question_key = `${question_type}_${character}`;
+                const question_trial = {
+                    type: jsPsychHtmlButtonResponse,
+                    stimulus: `<img src="${trials["scenarios"][scenario]["questions"][question_key]}" width="70%"></img>`,
+                    choices: [
+                        buildOptionChoice("images/responses/yes.png"),
+                        buildOptionChoice("images/responses/no.png")
+                    ],
+                    prompt: "<p>Please choose one option.</p>",
+                    data: {
+                        "page_type": "trial_data",
+                        "scenario": scenario,
+                        "question": question_key,
+                    },
+                    on_finish: function(data) {
+                        data.selected_option = data.response === 0 ? "yes" : "no";
+                    }
+                };
+                timeline.push(question_trial);
+            }
+        }
+    }
+
+    // Add demographic form after all scenarios are completed
+    timeline.push(demographic_form);
+
+
+    jsPsych.run(timeline);
+</script>
+
+</html>
