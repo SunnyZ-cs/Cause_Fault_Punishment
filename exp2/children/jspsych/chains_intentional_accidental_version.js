@@ -333,6 +333,7 @@ const video_consent = {
     procedures:  'Your child will watch short videos and answer questions by clicking on pictures on the screen.',
     risk_statement: 'There are no expected risks to participation.',
     payment:     'After you finish the study, we will email you a $5 Amazon gift card within approximately 3–5 business days.',
+    research_rights_statement: 'This research has been reviewed and approved by an Institutional Review Board (“IRB”), a group of people who oversee research involving humans as participants. Information to help you understand research is on-line at https://irb.stanford.edu/. You may talk to a IRB staff member at (650) 723-2480 or irb2-manager@lists.stanford.edu for any of the following: 1) Your questions, concerns, or complaints are not being answered by the research team; 2) you cannot reach the research team; 3) you want to talk to someone besides the research team; 4) you have questions about your rights as a research subject; 5) you want to get information or provide input about this research.',
     include_databrary: true
 };
 
@@ -355,6 +356,49 @@ const instructions = {
 
 const start_recording = { type: chsRecord.StartRecordPlugin };
 const stop_recording  = { type: chsRecord.StopRecordPlugin  };
+
+const debrief_page = {
+    type: jsPsychHtmlKeyboardResponse,
+    stimulus: `
+        <div class="instructions-box" style="max-width: 800px; margin: 40px auto; text-align: left; line-height: 1.7; font-family: Arial, sans-serif;">
+            <h1 style="text-align: center; margin-bottom: 30px; font-size: 2.2em; font-weight: normal; color: #333;">Thank you!</h1>
+            
+            <p style="margin-bottom: 1.5em; font-size: 1.05em; color: #444;">This study is a follow-up to our previous research examining how children trace fault, responsibility, and punishment in complex causal chains, and how they distinguish between intentional actions and accidental events.</p>
+            
+            <p style="margin-bottom: 1.5em; font-size: 1.05em; color: #444;">In our previous work, we examined how children and adults assign responsibility in situations where a chain reaction leads to an object breaking (for example, Andy runs into Suzy with his bike, pushing her into a fence, causing it to break). We wanted to build on this work by adding two new elements: first, varying whether the initial (distal) cause intended to break the object or did so accidentally (e.g., his bike chain slipped); and second, adding a question about whether each character should be punished.</p>
+            
+            <p style="margin-bottom: 1.5em; font-size: 1.05em; color: #444;">To avoid forcing participants to select someone to blame or punish when an event is purely accidental, we moved to a yes/no question format. Here, participants are asked individually about each character (e.g., "Did Andy break the fence?" and "Did Suzy break the fence?"). We are interested in seeing how children's judgments of causation, fault, and punishment develop, particularly in how they contrast intentional acts with accidents.</p>
+            
+            <p style="margin-bottom: 1.5em; font-size: 1.05em; color: #444;"><strong>Compensation:</strong> As a reminder, you will receive a $5 Amazon.com gift card via email within approximately a week of completing the study.</p>
+            
+            <p style="margin-bottom: 2em; font-size: 1.05em; color: #444;">If you are interested in learning more about this topic, please visit our lab website: <a href="https://markmanlab.stanford.edu" target="_blank" style="color: #337ab7; text-decoration: none;">markmanlab.stanford.edu</a>, or check out this paper: 
+            <a href="https://davdrose.github.io/assets/pdf/cause_fault_cog_sci.pdf" target="_blank" style="color: #337ab7; text-decoration: none;">https://davdrose.github.io/assets/pdf/cause_fault_cog_sci.pdf</a>. Thank you again for your participation!</p>
+            
+            <div style="text-align: center; margin-top: 30px; margin-bottom: 20px;">
+                <button id="fb-share-btn" class="jspsych-btn" style="background-color: #3b5998; color: white; border: none; padding: 12px 24px; font-size: 1.1em; border-radius: 4px; cursor: pointer; margin-right: 15px; font-weight: bold;">Share this study on Facebook!</button>
+                <button id="exit-btn" class="jspsych-btn" style="background-color: #5cb85c; color: white; border: none; padding: 12px 24px; font-size: 1.1em; border-radius: 4px; cursor: pointer; font-weight: bold;">Exit</button>
+            </div>
+        </div>
+    `,
+    choices: "NO_KEYS",
+    on_load: function() {
+        const fbBtn = document.getElementById('fb-share-btn');
+        if (fbBtn) {
+            fbBtn.addEventListener('click', function() {
+                const studyUrl = window.location.href;
+                const fbShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(studyUrl)}`;
+                window.open(fbShareUrl, '_blank');
+            });
+        }
+        const exitBtn = document.getElementById('exit-btn');
+        if (exitBtn) {
+            exitBtn.addEventListener('click', function() {
+                window.location.href = "https://childrenhelpingscience.com/studies/history/";
+            });
+        }
+    },
+    data: { trial_type: 'debrief' }
+};
 
 
 // ════════════════════════════════════════════════════════════════════
@@ -411,5 +455,6 @@ jsPsych.run([
     stop_recording,
     videoTrial('overall_study_end', 'end_video'),
     { type: jsPsychFullscreen, fullscreen_mode: false, delay_after: 0 },
-    { type: chsSurvey.ExitSurveyPlugin }
+    { type: chsSurvey.ExitSurveyPlugin },
+    debrief_page
 ]);
